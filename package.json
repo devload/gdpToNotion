@@ -1,0 +1,15 @@
+{
+  "name": "gdp-to-notion",
+  "version": "1.0.0",
+  "description": "Convert Markdown to Notion pages via Chrome DevTools Protocol",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node src/index.js test/complex-test.md"
+  },
+  "dependencies": {
+    "marked": "^15.0.0",
+    "node-html-parser": "^6.1.0",
+    "puppeteer-core": "^24.0.0"
+  }
+}
