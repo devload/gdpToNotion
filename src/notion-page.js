@@ -77,9 +77,9 @@ async function setTitle(page, title) {
   await delay(config.timeouts.shortDelay);
 
   // Select all existing title text and replace
-  await page.keyboard.down('Control');
+  await page.keyboard.down(config.modKey);
   await page.keyboard.press('a');
-  await page.keyboard.up('Control');
+  await page.keyboard.up(config.modKey);
   await delay(100);
   await page.keyboard.press('Backspace');
   await delay(100);
@@ -142,9 +142,9 @@ async function clearContent(page) {
   // Clear title first
   await clickTitle(page);
   await delay(config.timeouts.shortDelay);
-  await page.keyboard.down('Control');
+  await page.keyboard.down(config.modKey);
   await page.keyboard.press('a');
-  await page.keyboard.up('Control');
+  await page.keyboard.up(config.modKey);
   await delay(100);
   await page.keyboard.press('Backspace');
   await delay(config.timeouts.shortDelay);
@@ -235,15 +235,15 @@ async function clearContent(page) {
 
     const client = await page.createCDPSession();
     await client.send('Input.dispatchKeyEvent', {
-      type: 'rawKeyDown', modifiers: 2, windowsVirtualKeyCode: 65,
+      type: 'rawKeyDown', modifiers: config.modBit, windowsVirtualKeyCode: 65,
       key: 'a', code: 'KeyA',
     });
     await client.send('Input.dispatchKeyEvent', {
-      type: 'char', modifiers: 2, text: '\x01',
+      type: 'char', modifiers: config.modBit, text: '\x01',
       key: 'a', code: 'KeyA',
     });
     await client.send('Input.dispatchKeyEvent', {
-      type: 'keyUp', modifiers: 2, windowsVirtualKeyCode: 65,
+      type: 'keyUp', modifiers: config.modBit, windowsVirtualKeyCode: 65,
       key: 'a', code: 'KeyA',
     });
     await delay(config.timeouts.mediumDelay);
@@ -266,9 +266,9 @@ async function clearContent(page) {
     console.log(`[notion] Phase 3: Remaining text found: "${remainingText.slice(0, 50)}"`);
     await clickContentBlock();
     await delay(config.timeouts.shortDelay);
-    await page.keyboard.down('Control');
+    await page.keyboard.down(config.modKey);
     await page.keyboard.press('a');
-    await page.keyboard.up('Control');
+    await page.keyboard.up(config.modKey);
     await delay(200);
     await page.keyboard.press('Backspace');
     await delay(config.timeouts.mediumDelay);
@@ -313,19 +313,39 @@ async function clearContent(page) {
  * Paste a single HTML chunk using Clipboard API + Ctrl+V.
  */
 async function pasteHtmlChunk(page, html) {
-  // Write HTML to clipboard
-  await page.evaluate(async (htmlContent) => {
-    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-    const textBlob = new Blob([htmlContent.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
-    await navigator.clipboard.write([
-      new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob }),
-    ]);
+  // Method 1: Dispatch synthetic ClipboardEvent (most reliable cross-platform)
+  const pasted = await page.evaluate((htmlContent) => {
+    const activeEl = document.activeElement;
+    if (!activeEl) return false;
+
+    const dt = new DataTransfer();
+    dt.setData('text/html', htmlContent);
+    dt.setData('text/plain', htmlContent.replace(/<[^>]*>/g, ''));
+
+    const pasteEvent = new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: dt,
+    });
+
+    return activeEl.dispatchEvent(pasteEvent);
   }, html);
 
-  // Ctrl+V to trigger Notion's paste handler
-  await page.keyboard.down('Control');
-  await page.keyboard.press('v');
-  await page.keyboard.up('Control');
+  if (!pasted) {
+    // Fallback: Clipboard API + keyboard shortcut
+    console.log('[notion] ClipboardEvent dispatch returned false, trying keyboard fallback');
+    await page.evaluate(async (htmlContent) => {
+      const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+      const textBlob = new Blob([htmlContent.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob }),
+      ]);
+    }, html);
+
+    await page.keyboard.down(config.modKey);
+    await page.keyboard.press('v');
+    await page.keyboard.up(config.modKey);
+  }
 
   await delay(config.timeouts.pasteSettle);
 }
@@ -378,10 +398,10 @@ async function pasteContent(page, html) {
         await page.mouse.click(lastTextPos.x, lastTextPos.y);
         await delay(config.timeouts.shortDelay);
       }
-      // Ctrl+End moves cursor to absolute end of page content
-      await page.keyboard.down('Control');
+      // Cmd+End (Mac) or Ctrl+End (Windows) moves cursor to absolute end of page content
+      await page.keyboard.down(config.modKey);
       await page.keyboard.press('End');
-      await page.keyboard.up('Control');
+      await page.keyboard.up(config.modKey);
       await delay(200);
       // Enter to exit current block context (quote, list, etc.) and create new empty block
       await page.keyboard.press('Enter');
@@ -425,9 +445,9 @@ async function setProperty(page, key, value) {
   }
 
   await delay(config.timeouts.shortDelay);
-  await page.keyboard.down('Control');
+  await page.keyboard.down(config.modKey);
   await page.keyboard.press('a');
-  await page.keyboard.up('Control');
+  await page.keyboard.up(config.modKey);
   await page.keyboard.type(value, { delay: 10 });
   await page.keyboard.press('Enter');
   await delay(config.timeouts.shortDelay);

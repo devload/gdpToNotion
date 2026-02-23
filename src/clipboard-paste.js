@@ -2,6 +2,8 @@
 const config = require('./config');
 const { delay, waitForNewBlocks, getBlockCount } = require('./wait-utils');
 
+const isMac = process.platform === 'darwin';
+
 /**
  * Paste HTML into the currently focused Notion block.
  * Tries 3 methods in sequence until one succeeds.
@@ -73,10 +75,10 @@ async function pasteViaClipboardApi(page, html) {
     await navigator.clipboard.write([item]);
   }, html);
 
-  // Simulate Ctrl+V
-  await page.keyboard.down('Control');
+  // Simulate Cmd+V (Mac) or Ctrl+V (Windows)
+  await page.keyboard.down(config.modKey);
   await page.keyboard.press('v');
-  await page.keyboard.up('Control');
+  await page.keyboard.up(config.modKey);
 }
 
 /**
@@ -99,7 +101,7 @@ async function pasteViaCdpKeyEvent(page, html) {
 
   await cdpSession.send('Input.dispatchKeyEvent', {
     type: 'keyDown',
-    modifiers: 2, // Ctrl
+    modifiers: config.modBit,
     key: 'v',
     code: 'KeyV',
     windowsVirtualKeyCode: 86,
@@ -107,7 +109,7 @@ async function pasteViaCdpKeyEvent(page, html) {
 
   await cdpSession.send('Input.dispatchKeyEvent', {
     type: 'keyUp',
-    modifiers: 2,
+    modifiers: config.modBit,
     key: 'v',
     code: 'KeyV',
     windowsVirtualKeyCode: 86,

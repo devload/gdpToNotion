@@ -1,6 +1,13 @@
 // Configuration for MD-to-Notion CDP tool
 
+const isMac = process.platform === 'darwin';
+
 const config = {
+  // OS-aware modifier key: Meta (Cmd) on macOS, Control on Windows/Linux
+  modKey: isMac ? 'Meta' : 'Control',
+  // CDP modifier bitmask: 4 = Meta, 2 = Control
+  modBit: isMac ? 4 : 2,
+
   chrome: {
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     cdpPort: 9222,
